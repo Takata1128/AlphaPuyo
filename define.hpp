@@ -32,3 +32,7 @@
 // for evaluate network
 #define EN_GAME_COUNT 50
 #define EN_TEMPERATURE 1.0
+
+#define VI std::vector<int>
+#define VVI std::vector<std::vector<int>>
+
