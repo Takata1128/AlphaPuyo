@@ -13,6 +13,8 @@ add_executable(NumberDetector
     PuyoGame.hpp
 )
 
+set(CMAKE_CXX_FLAGS "/std:c++17")
+
 # For Tensorflow
 target_link_libraries(NumberDetector ${PROJECT_SOURCE_DIR}/libtensorflow/lib/tensorflow.lib)
 target_include_directories(NumberDetector PUBLIC ${PROJECT_SOURCE_DIR}/libtensorflow/include)

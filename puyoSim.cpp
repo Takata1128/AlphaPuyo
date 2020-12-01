@@ -10,7 +10,7 @@
 #define MODEL_FILENAME \
     "C:/Users/s.takata/Documents/tensorflow_cpp/build/resources/best.pb"
 
-int greedy(State state, const VVI &puyoSeqs)
+int greedy(puyoGame::State state, const VVI &puyoSeqs)
 {
     int value = 0;
     std::vector<int> actions;
@@ -18,11 +18,11 @@ int greedy(State state, const VVI &puyoSeqs)
     for (int next : legalActions)
     {
         int r;
-        State nextState = state.next(next, puyoSeqs[state.turn], r);
+        puyoGame::State nextState = state.next(next, puyoSeqs[state.turn], r);
         auto nextLegalActions = nextState.legalActions();
         for (int dnext : nextLegalActions)
         {
-            State dnextState = nextState.next(dnext, puyoSeqs[state.turn + 1], r);
+            puyoGame::State dnextState = nextState.next(dnext, puyoSeqs[state.turn + 1], r);
             int score = dnextState.calcMaxReward();
             if (score > value)
             {
@@ -50,9 +50,13 @@ int greedy(State state, const VVI &puyoSeqs)
     }
 }
 
-void show(State state)
+void show(puyoGame::State state)
 {
     std::cout << "=== turn :" << state.turn << " begin ===" << std::endl;
+    std::cout << state.puyos[0][0] << " " << state.puyos[0][1] << std::endl;
+    std::cout << state.puyos[1][0] << " " << state.puyos[1][1] << std::endl;
+    std::cout << std::endl;
+
     for (int i = 0; i < GAMEMAP_HEIGHT; i++)
     {
         for (int j = 0; j < GAMEMAP_WIDTH; j++)
@@ -62,11 +66,19 @@ void show(State state)
     std::cout << "=== turn :" << state.turn << " end ===" << std::endl;
 }
 
+int chioceAction(const std::vector<int> &scores)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::discrete_distribution<> distr(scores.begin(), scores.end());
+    return distr(gen);
+}
+
 int main()
 {
     // モデルの読み込み
-    mcts::graph = tf_utils::LoadGraph(MODEL_FILENAME);
-    if (mcts::graph == nullptr)
+    mcts::loadGraph(MODEL_FILENAME);
+    if (mcts::getModel() == nullptr)
     {
         std::cout << "Can't load graph" << std::endl;
         return 1;
@@ -77,16 +89,21 @@ int main()
     for (int i = 0; i < 2; i++)
         for (int j = 0; j < 2; j++)
             puyos[i][j] = rand() % 4 + 1;
-    State state = State(VVI(GAMEMAP_HEIGHT, VI(GAMEMAP_WIDTH)), puyos, 0);
+    puyoGame::State state = puyoGame::State(VVI(GAMEMAP_HEIGHT, VI(GAMEMAP_WIDTH)), puyos, 0);
     while (1)
     {
         int rensa = state.calcMaxReward();
-        std::cout << rensa << std::endl;
+        std::cout << "rensa : " << rensa << std::endl;
+        show(state);
         if (state.isDone())
             break;
-        int action = greedy(state, puyoSeqs);
+        std::vector<int> scores = mcts::mctsScores(state, 1.0);
+        int action = chioceAction(scores);
+        std::cout << "action : " << action << std::endl;
         int reward = 0;
         state = state.next(action, puyoSeqs[state.turn], reward);
+        int a;
+        std::cin >> a;
     }
     return 0;
 }

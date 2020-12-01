@@ -5,97 +5,97 @@
 const int dx[] = {0, -1, 0, 1};
 const int dy[] = {1, 0, -1, 0};
 
-Puyo::Puyo(int color1, int color2)
+puyoGame::Puyo::Puyo(int color1, int color2)
 {
     this->direction = UP;
     this->color1 = color1;
     this->color2 = color2;
 }
 
-void Puyo::set_direct(int direct) { this->direction = direct; }
+void puyoGame::Puyo::set_direct(int direct) { this->direction = direct; }
 
-State::State()
+puyoGame::State::State()
 {
     this->gameMap = VVI();
     this->puyos = VVI(2, VI(2));
     this->turn = 0;
 }
 
-State::State(VVI gameMap, VVI puyos, int turn)
+puyoGame::State::State(VVI gameMap, VVI puyos, int turn)
 {
     this->gameMap = gameMap;
     this->puyos = puyos;
     this->turn = turn;
 }
 
-bool State::isDone() { return this->isEnd() || this->isLose(); }
+bool puyoGame::State::isDone() { return this->isEnd() || this->isLose(); }
 
-bool State::isLose() { return this->gameMap[1][2] != Puyo::NONE; }
+bool puyoGame::State::isLose() { return this->gameMap[1][2] != puyoGame::Puyo::NONE; }
 
-bool State::isEnd() { return this->turn == MAX_STEP; }
+bool puyoGame::State::isEnd() { return this->turn == MAX_STEP; }
 
-Puyo State::getNextPuyo() { return Puyo(puyos[0][0], puyos[0][1]); }
+puyoGame::Puyo puyoGame::State::getNextPuyo() { return Puyo(puyos[0][0], puyos[0][1]); }
 
 inline int getFallY(const VVI &stage, int x)
 {
     size_t fallY = 0;
-    while (fallY + 1 < GAMEMAP_HEIGHT && stage[fallY + 1][x] == Puyo::NONE)
+    while (fallY + 1 < GAMEMAP_HEIGHT && stage[fallY + 1][x] == puyoGame::Puyo::NONE)
         fallY++;
     return fallY;
 }
 
-VVI State::oneFall(VVI stage, size_t x, int color, bool &isAlive)
+VVI puyoGame::State::oneFall(VVI stage, size_t x, int color, bool &isAlive)
 {
-    assert(stage[0][x] == Puyo::NONE);
+    assert(stage[0][x] == puyoGame::Puyo::NONE);
 
     size_t fallY = getFallY(stage, x);
     stage[fallY][x] = color;
-    isAlive = (stage[1][2] == Puyo::NONE);
+    isAlive = (stage[1][2] == puyoGame::Puyo::NONE);
     return stage;
 }
 
 // 組ぷよを落とす
-VVI State::puyoFall(VVI stage, size_t x, Puyo puyo, bool &isAlive)
+VVI puyoGame::State::puyoFall(VVI stage, size_t x, puyoGame::Puyo puyo, bool &isAlive)
 {
-    if (puyo.direction == Puyo::UP)
+    if (puyo.direction == puyoGame::Puyo::UP)
     {
-        assert(stage[0][x] == Puyo::NONE && stage[1][x] == Puyo::NONE);
+        assert(stage[0][x] == puyoGame::Puyo::NONE && stage[1][x] == puyoGame::Puyo::NONE);
         size_t fallY = getFallY(stage, x);
         stage[fallY][x] = puyo.color1;
         fallY = getFallY(stage, x);
         stage[fallY][x] = puyo.color2;
     }
-    else if (puyo.direction == Puyo::RIGHT)
+    else if (puyo.direction == puyoGame::Puyo::RIGHT)
     {
         assert(x + 1 < GAMEMAP_WIDTH);
-        assert(stage[0][x] == Puyo::NONE && stage[0][x + 1] == Puyo::NONE);
+        assert(stage[0][x] == puyoGame::Puyo::NONE && stage[0][x + 1] == puyoGame::Puyo::NONE);
         size_t fallY = getFallY(stage, x);
         stage[fallY][x] = puyo.color1;
         fallY = getFallY(stage, x + 1);
         stage[fallY][x + 1] = puyo.color2;
     }
-    else if (puyo.direction == Puyo::DOWN)
+    else if (puyo.direction == puyoGame::Puyo::DOWN)
     {
-        assert(stage[0][x] == Puyo::NONE && stage[1][x] == Puyo::NONE);
+        assert(stage[0][x] == puyoGame::Puyo::NONE && stage[1][x] == puyoGame::Puyo::NONE);
         size_t fallY = getFallY(stage, x);
         stage[fallY][x] = puyo.color2;
         fallY = getFallY(stage, x);
         stage[fallY][x] = puyo.color1;
     }
-    else if (puyo.direction == Puyo::LEFT)
+    else if (puyo.direction == puyoGame::Puyo::LEFT)
     {
         assert(x - 1 >= 0);
-        assert(stage[0][x] == Puyo::NONE && stage[0][x - 1] == Puyo::NONE);
+        assert(stage[0][x] == puyoGame::Puyo::NONE && stage[0][x - 1] == puyoGame::Puyo::NONE);
         size_t fallY = getFallY(stage, x);
         stage[fallY][x] = puyo.color1;
         fallY = getFallY(stage, x - 1);
         stage[fallY][x - 1] = puyo.color2;
     }
-    isAlive = (stage[1][2] == Puyo::NONE);
+    isAlive = (stage[1][2] == puyoGame::Puyo::NONE);
     return stage;
 }
 
-VVI State::erase(VVI stage, VVI newStage, int &getScore)
+VVI puyoGame::State::erase(VVI stage, VVI newStage, int &getScore)
 {
     getScore = 0;
     std::vector<std::pair<int, int>> vec;
@@ -124,14 +124,14 @@ VVI State::erase(VVI stage, VVI newStage, int &getScore)
     return newStage;
 }
 
-VVI State::erasePuyo(VVI stage, size_t sx, size_t sy, int color, int &counter)
+VVI puyoGame::State::erasePuyo(VVI stage, size_t sx, size_t sy, int color, int &counter)
 {
     counter = 0;
-    if (color == Puyo::OJAMA)
+    if (color == puyoGame::Puyo::OJAMA)
     {
         return stage;
     }
-    if (color == Puyo::NONE)
+    if (color == puyoGame::Puyo::NONE)
     {
         return stage;
     }
@@ -141,20 +141,20 @@ VVI State::erasePuyo(VVI stage, size_t sx, size_t sy, int color, int &counter)
     {
         auto [x, y] = que.front();
         que.pop();
-        if (stage[y][x] == Puyo::OJAMA)
+        if (stage[y][x] == puyoGame::Puyo::OJAMA)
         {
-            stage[y][x] = Puyo::NONE;
+            stage[y][x] = puyoGame::Puyo::NONE;
             continue;
         }
         counter++;
-        stage[y][x] = Puyo::NONE;
+        stage[y][x] = puyoGame::Puyo::NONE;
         for (int i = 0; i < 4; i++)
         {
             int nx = x + dx[i], ny = y + dy[i];
             if (nx >= 0 && nx < GAMEMAP_WIDTH && ny >= 0 &&
                 ny < GAMEMAP_HEIGHT)
             {
-                if (stage[ny][nx] == Puyo::OJAMA || stage[ny][nx] == color)
+                if (stage[ny][nx] == puyoGame::Puyo::OJAMA || stage[ny][nx] == color)
                 {
                     que.emplace(nx, ny);
                 }
@@ -164,7 +164,7 @@ VVI State::erasePuyo(VVI stage, size_t sx, size_t sy, int color, int &counter)
     return stage;
 }
 
-VVI State::eraseSimulation(VVI gameMap, VVI newGameMap, int &reward)
+VVI puyoGame::State::eraseSimulation(VVI gameMap, VVI newGameMap, int &reward)
 {
     int counter = 0;
     reward = 0;
@@ -191,14 +191,14 @@ VVI State::eraseSimulation(VVI gameMap, VVI newGameMap, int &reward)
     return gameMap;
 }
 
-VVI State::fall(VVI stage)
+VVI puyoGame::State::fall(VVI stage)
 {
     for (int x = 0; x < GAMEMAP_WIDTH; x++)
     {
         std::queue<int> que;
         for (int y = GAMEMAP_HEIGHT - 1; y >= 0; y--)
         {
-            if (stage[y][x] != Puyo::NONE)
+            if (stage[y][x] != puyoGame::Puyo::NONE)
             {
                 que.push(stage[y][x]);
             }
@@ -207,7 +207,7 @@ VVI State::fall(VVI stage)
         {
             if (que.empty())
             {
-                stage[y][x] = Puyo::NONE;
+                stage[y][x] = puyoGame::Puyo::NONE;
             }
             else
             {
@@ -219,7 +219,7 @@ VVI State::fall(VVI stage)
     return stage;
 }
 
-VI State::legalActions()
+VI puyoGame::State::legalActions()
 {
     VI ret;
     int actionIdx = 0;
@@ -231,7 +231,7 @@ VI State::legalActions()
             int cnt = 0;
             for (int y = 0; y < GAMEMAP_HEIGHT; y++)
             {
-                if (this->gameMap[y][x] == Puyo::NONE)
+                if (this->gameMap[y][x] == puyoGame::Puyo::NONE)
                     cnt++;
             }
             if (cnt < action_vec[x])
@@ -255,7 +255,7 @@ inline VVI makePuyos(const VI &puyo1, const VI &puyo2)
 }
 
 // 次状態に遷移
-State State::next(int action, VI nextPuyoColors, int &reward)
+puyoGame::State puyoGame::State::next(int action, VI nextPuyoColors, int &reward)
 {
     VVI gameMap = this->gameMap;
     Puyo puyo = getNextPuyo();
@@ -293,7 +293,7 @@ State State::next(int action, VI nextPuyoColors, int &reward)
     return State(resMap, nextPuyos, this->turn + 1);
 }
 
-int State::calcMaxReward()
+int puyoGame::State::calcMaxReward()
 {
     auto gameMap = this->gameMap;
     int reward = 0;
@@ -301,7 +301,7 @@ int State::calcMaxReward()
     {
         for (int x = 0; x < GAMEMAP_WIDTH; x++)
         {
-            if (gameMap[0][x] != Puyo::NONE)
+            if (gameMap[0][x] != puyoGame::Puyo::NONE)
                 continue;
             bool isAlive = 1;
             auto newGameMap = this->oneFall(gameMap, x, color, isAlive);
