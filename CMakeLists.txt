@@ -14,6 +14,8 @@ add_executable(NumberDetector
 )
 
 set(CMAKE_CXX_FLAGS "/std:c++17")
+set(BOOST_ROOT "C:/Boost")
+set(PYTHON_ROOT "C:/Users/s.takata/AppData/Local/Programs/Python/Python36")
 
 # For Tensorflow
 target_link_libraries(NumberDetector ${PROJECT_SOURCE_DIR}/libtensorflow/lib/tensorflow.lib)
@@ -21,6 +23,16 @@ target_include_directories(NumberDetector PUBLIC ${PROJECT_SOURCE_DIR}/libtensor
 target_include_directories(NumberDetector PUBLIC ${PROJECT_SOURCE_DIR}/3rd_party/include)
 file(COPY ${PROJECT_SOURCE_DIR}/libtensorflow/lib/tensorflow.dll DESTINATION ${PROJECT_BINARY_DIR}/Debug)
 
-# Copy resouce
+#for python
+target_link_libraries(NumberDetector ${PYTHON_ROOT}/libs/python36.lib)
+target_include_directories(NumberDetector PUBLIC ${PYTHON_ROOT}/include)
+
+# For Boost
+target_link_libraries(NumberDetector ${BOOST_ROOT}/lib/libboost_python36-vc142-mt-x64-1_74.lib)
+target_link_libraries(NumberDetector ${BOOST_ROOT}/lib/libboost_numpy36-vc142-mt-x64-1_74.lib)
+target_include_directories(NumberDetector PUBLIC ${BOOST_ROOT}/include/boost-1_74)
+
+# Copy resource
 file(COPY ${CMAKE_SOURCE_DIR}/resources/ DESTINATION ${PROJECT_BINARY_DIR}/resources/)
+file(COPY ${CMAKE_SOURCE_DIR}/save.py DESTINATION ${PROJECT_BINARY_DIR}/Release/)
 add_definitions(-DRESOURCE_DIR="${PROJECT_BINARY_DIR}/resources/")

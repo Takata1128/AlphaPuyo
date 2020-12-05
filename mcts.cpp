@@ -6,7 +6,7 @@
 #include <iostream>
 #include <numeric>
 
-mcts::Node::Node(puyoGame::State state, int d, float p, int r, int turn)
+mcts::Node::Node(puyoGame::State state, int d, float p, int r, int turn, TF_Graph *model, TF_Session *sess)
 {
     this->state = state;
     this->p = p;
@@ -15,6 +15,8 @@ mcts::Node::Node(puyoGame::State state, int d, float p, int r, int turn)
     this->w = 0;
     this->n = 0;
     this->turn = turn;
+    this->model = model;
+    this->sess = sess;
 }
 
 float mcts::Node::evaluate(const VVI &puyoSeqs)
@@ -37,14 +39,14 @@ float mcts::Node::evaluate(const VVI &puyoSeqs)
 
     if (this->childNodes.empty())
     {
-        std::vector<float> policies = mcts::predict(this->state);
+        std::vector<float> policies = MCTS::predict(this->state, model, sess);
         float value = policies.back();
-        std::cout << "predict value: " << value << std::endl;
+        // std::cout << "predict value: " << value << std::endl;
         policies.pop_back();
-        std::cout << "predict policies: ";
-        for (auto p : policies)
-            std::cout << p << " ";
-        std::cout << std::endl;
+        // std::cout << "predict policies: ";
+        // for (auto p : policies)
+        //     std::cout << p << " ";
+        // std::cout << std::endl;
         this->w += value;
         this->n++;
         VI actions = this->state.legalActions();
@@ -52,7 +54,7 @@ float mcts::Node::evaluate(const VVI &puyoSeqs)
         {
             int reward = 0;
             puyoGame::State nextState = this->state.next(actions[i], puyoSeqs[this->d], reward);
-            this->childNodes.push_back(std::unique_ptr<Node>(new Node(nextState, this->d + 1, policies[actions[i]], std::max(this->r, reward), this->turn + 1)));
+            this->childNodes.push_back(std::unique_ptr<Node>(new Node(nextState, this->d + 1, policies[actions[i]], std::max(this->r, reward), this->turn + 1, model, sess)));
         }
         return value;
     }
@@ -67,7 +69,7 @@ float mcts::Node::evaluate(const VVI &puyoSeqs)
 
 int mcts::Node::nextChildNode()
 {
-    auto v = nodesToScores(childNodes);
+    auto v = MCTS::nodesToScores(childNodes);
     int t = std::accumulate(v.begin(), v.end(), 0);
     std::vector<float> pucbValues;
     for (auto &c : childNodes)
@@ -75,13 +77,13 @@ int mcts::Node::nextChildNode()
         pucbValues.push_back((c->n ? (c->w / (float)c->n) : 0.0) +
                              (w / (float)n) * c->p * sqrt(t) / (float)(1 + c->n));
     }
-    std::cout << "w : " << w << std::endl;
-    std::cout << "=== pucbValues ===" << std::endl;
-    for (int i = 0; i < pucbValues.size(); i++)
-    {
-        std::cout << pucbValues[i] << " ";
-    }
-    std::cout << std::endl;
+    // std::cout << "w : " << w << std::endl;
+    // std::cout << "=== pucbValues ===" << std::endl;
+    // for (int i = 0; i < pucbValues.size(); i++)
+    // {
+    //     std::cout << pucbValues[i] << " ";
+    // }
+    // std::cout << std::endl;
 
     int idx = std::distance(
         pucbValues.begin(),
@@ -89,18 +91,14 @@ int mcts::Node::nextChildNode()
     return idx;
 }
 
-void mcts::loadGraph(const char *fileName)
+TF_Graph *mcts::MCTS::loadGraph(const char *fileName)
 {
     model = tf_utils::LoadGraph(fileName);
-}
-
-TF_Graph *mcts::getModel()
-{
     return model;
 }
 
 std::vector<int>
-mcts::nodesToScores(const std::vector<std::unique_ptr<mcts::Node>> &nodes)
+mcts::MCTS::nodesToScores(const std::vector<std::unique_ptr<mcts::Node>> &nodes)
 {
     std::vector<int> ret;
     for (auto &c : nodes)
@@ -108,30 +106,21 @@ mcts::nodesToScores(const std::vector<std::unique_ptr<mcts::Node>> &nodes)
     return ret;
 }
 
-VVI mcts::makePuyoSeqs(const int len)
-{
-    VVI ret(len, VI(2));
-    for (int i = 0; i < len; i++)
-        for (int j = 0; j < 2; j++)
-            ret[i][j] = rand() % 4 + 1;
-    return ret;
-}
-
-std::vector<int> mcts::mctsScores(puyoGame::State state,
-                                  float temperature)
+std::vector<int> mcts::MCTS::mctsScores(puyoGame::State state,
+                                        float temperature)
 {
     int childNodeNum = state.legalActions().size();
     std::vector<int> childNodesPlayCounts(childNodeNum);
     for (int i = 0; i < TRY_COUNT; i++)
     {
-        std::cout << "TRY " << i << std::endl;
-        VVI puyoSeqs = mcts::makePuyoSeqs(10);
+        // std::cout << "TRY " << i << std::endl;
+        VVI puyoSeqs = puyoGame::State::makePuyoSeqs(10);
         puyoGame::State tmp = state;
-        Node rootNode = Node(tmp, 0, 0, 0, tmp.turn);
+        Node rootNode = Node(tmp, 0, 0, 0, tmp.turn, model, sess);
         for (int j = 0; j < PV_EVALUATE_COUNT; j++)
         {
             rootNode.evaluate(puyoSeqs);
-            std::cout << "evaluate " << j << std::endl;
+            // std::cout << "evaluate " << j << std::endl;
         }
         for (int j = 0; j < childNodeNum; j++)
         {
@@ -141,14 +130,14 @@ std::vector<int> mcts::mctsScores(puyoGame::State state,
     return childNodesPlayCounts;
 }
 
-std::vector<float> mcts::encode(const puyoGame::State &state)
+std::vector<float> mcts::MCTS::encode(const puyoGame::State &state)
 {
     return data2Binary(state.gameMap, state.puyos[0], state.puyos[1],
                        state.turn);
 }
 
-std::vector<float> mcts::data2Binary(const VVI &stage, VI nowPuyo, VI nextPuyo,
-                                     int turn)
+std::vector<float> mcts::MCTS::data2Binary(const VVI &stage, VI nowPuyo, VI nextPuyo,
+                                           int turn)
 {
     std::vector<std::vector<std::vector<int>>> mat(
         GAMEMAP_HEIGHT, std::vector<std::vector<int>>(
@@ -175,7 +164,44 @@ std::vector<float> mcts::data2Binary(const VVI &stage, VI nowPuyo, VI nextPuyo,
     return ret;
 }
 
-std::vector<float> mcts::predict(const puyoGame::State &state)
+bool mcts::MCTS::prepareSession()
+{
+    /* prepare session */
+    TF_Status *status = TF_NewStatus();
+    TF_SessionOptions *options = TF_NewSessionOptions();
+    sess = TF_NewSession(model, options, status);
+    TF_DeleteSessionOptions(options);
+
+    if (TF_GetCode(status) != TF_OK)
+    {
+        TF_DeleteStatus(status);
+        return false;
+    }
+    return true;
+}
+
+bool mcts::MCTS::closeSession()
+{
+    TF_Status *status = TF_NewStatus();
+    TF_CloseSession(sess, status);
+    if (TF_GetCode(status) != TF_OK)
+    {
+        std::cout << "Error close session";
+        TF_DeleteStatus(status);
+        return false;
+    }
+
+    TF_DeleteSession(sess, status);
+    if (TF_GetCode(status) != TF_OK)
+    {
+        std::cout << "Error delete session";
+        TF_DeleteStatus(status);
+        return false;
+    }
+    return true;
+}
+
+std::vector<float> mcts::MCTS::predict(const puyoGame::State &state, TF_Graph *model, TF_Session *sess)
 {
     /* prepare input tensor */
     TF_Output input_op = {TF_GraphOperationByName(model, "input_1"), 0};
@@ -186,7 +212,7 @@ std::vector<float> mcts::predict(const puyoGame::State &state)
 
     const std::vector<std::int64_t> input_dims = {1, GAMEMAP_HEIGHT,
                                                   GAMEMAP_WIDTH, CHANNEL_SIZE};
-    std::vector<float> input_vals = mcts::encode(state);
+    std::vector<float> input_vals = mcts::MCTS::encode(state);
 
     TF_Tensor *input_tensor = tf_utils::CreateTensor(
         TF_FLOAT, input_dims.data(), input_dims.size(), input_vals.data(),
@@ -201,18 +227,9 @@ std::vector<float> mcts::predict(const puyoGame::State &state)
 
     TF_Tensor *output_tensor = nullptr;
 
-    /* prepare session */
-    TF_Status *status = TF_NewStatus();
-    TF_SessionOptions *options = TF_NewSessionOptions();
-    TF_Session *sess = TF_NewSession(model, options, status);
-    TF_DeleteSessionOptions(options);
-
-    if (TF_GetCode(status) != TF_OK)
-    {
-        TF_DeleteStatus(status);
-    }
-
     /* run session */
+    TF_Status *status = TF_NewStatus();
+
     TF_SessionRun(sess,
                   nullptr, // Run options.
                   &input_op, &input_tensor,
@@ -227,20 +244,6 @@ std::vector<float> mcts::predict(const puyoGame::State &state)
     if (TF_GetCode(status) != TF_OK)
     {
         std::cout << "Error run session";
-        TF_DeleteStatus(status);
-    }
-
-    TF_CloseSession(sess, status);
-    if (TF_GetCode(status) != TF_OK)
-    {
-        std::cout << "Error close session";
-        TF_DeleteStatus(status);
-    }
-
-    TF_DeleteSession(sess, status);
-    if (TF_GetCode(status) != TF_OK)
-    {
-        std::cout << "Error delete session";
         TF_DeleteStatus(status);
     }
 

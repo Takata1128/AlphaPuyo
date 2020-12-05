@@ -5,7 +5,9 @@
             "includePath": [
                 "${default}",
                 "./libtensorflow/include",
-                "./3rd_party/include"
+                "./3rd_party/include",
+                "C:/Boost/include/boost-1_74",
+                "C:/Users/s.takata/AppData/Local/Programs/Python/Python36/include"
             ],
             "defines": [
                 "_DEBUG",

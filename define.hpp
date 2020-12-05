@@ -11,8 +11,8 @@
 // for MCTS
 #define EVALUATE_DEPTH 5
 #define TSUMO_SIZE 7
-#define TRY_COUNT 5
-#define PV_EVALUATE_COUNT 10
+#define TRY_COUNT 10
+#define PV_EVALUATE_COUNT 200
 #define C_PUCT 5.0
 
 // for construction of network

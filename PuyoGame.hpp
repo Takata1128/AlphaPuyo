@@ -73,5 +73,7 @@ namespace puyoGame
     VI legalActions();
     State next(int action, VI nextPuyoColors, int &reward);
     int calcMaxReward();
+
+    static VVI makePuyoSeqs(const int len);
   };
 } // namespace puyoGame
