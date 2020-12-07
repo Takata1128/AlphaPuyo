@@ -11,6 +11,8 @@
 #include <tensorflow/c/c_api.h>
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
+#include <future>
+#include "threadPool.hpp"
 
 #define MODEL_FILENAME \
     "C:/Users/s.takata/Documents/tensorflow_cpp/build/resources/best.pb"
@@ -105,10 +107,12 @@ std::vector<float> softmax(std::vector<int> &scores)
     return ret;
 }
 
-std::vector<HIST> play()
+std::vector<HIST> play(int number)
 {
     std::vector<HIST> history;
     mcts::MCTS Mcts = mcts::MCTS();
+
+    std::cout << "Play " << number << " started." << std::endl;
 
     // モデルの読み込み
     if (Mcts.loadGraph(MODEL_FILENAME) == nullptr)
@@ -146,7 +150,8 @@ std::vector<HIST> play()
         int _ = 0;
         state = state.next(action, puyoSeqs[state.turn], _);
 
-        std::cout << "turn" << state.turn << ": "
+        std::cout << "Play " << number << " : "
+                  << "turn" << state.turn << ": "
                   << "rensa. " << rensa << ", action. " << action << std::endl;
     }
 
@@ -165,29 +170,44 @@ std::vector<HIST> play()
 
     if (!Mcts.closeSession())
         return history;
+
+    std::cout << "Play " << number << " ended." << std::endl;
+
     return history;
 }
 
 namespace python = boost::python;
 namespace np = boost::python::numpy;
-const int MAX_X = 100;
 int main()
 {
     Py_Initialize();
     np::initialize();
 
-    auto main_ns = boost::python::import("save").attr("__dict__");
+    std::vector<HIST> histories;
+    std::vector<std::future<std::vector<HIST>>> futures;
 
-    auto history = play();
-
-    for (int i = 0; i < history.size(); i++)
     {
-        show(i, history[i]);
+        thread_pool tp;
+        for (int i = 0; i < EN_GAME_COUNT; i++)
+        {
+            futures.emplace_back(tp.enqueue_task(play, i));
+        }
     }
+
+    for (auto &f : futures)
+    {
+        auto hist = f.get();
+        for (auto &h : hist)
+        {
+            histories.emplace_back(h);
+        }
+    }
+
+    auto main_ns = boost::python::import("save").attr("__dict__");
 
     python::list hist;
 
-    for (auto [gameMap, puyos, policies, value] : history)
+    for (auto [gameMap, puyos, policies, value] : histories)
     {
         python::list l;
 
