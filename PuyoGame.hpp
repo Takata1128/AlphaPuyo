@@ -1,34 +1,18 @@
 #pragma once
 #include "define.hpp"
 
-namespace puyoGame
-{
-  static const VVI ACTIONSDICT = {
-      {1, 1, 0, 0, 0, 0},
-      {2, 0, 0, 0, 0, 0},
-      {2, 0, 0, 0, 0, 0},
-      {1, 1, 0, 0, 0, 0},
-      {0, 2, 0, 0, 0, 0},
-      {0, 1, 1, 0, 0, 0},
-      {0, 2, 0, 0, 0, 0},
-      {0, 1, 1, 0, 0, 0},
-      {0, 0, 2, 0, 0, 0},
-      {0, 0, 1, 1, 0, 0},
-      {0, 0, 2, 0, 0, 0},
-      {0, 0, 1, 1, 0, 0},
-      {0, 0, 0, 2, 0, 0},
-      {0, 0, 0, 1, 1, 0},
-      {0, 0, 0, 2, 0, 0},
-      {0, 0, 0, 1, 1, 0},
-      {0, 0, 0, 0, 2, 0},
-      {0, 0, 0, 0, 1, 1},
-      {0, 0, 0, 0, 2, 0},
-      {0, 0, 0, 0, 1, 1},
-      {0, 0, 0, 0, 0, 2},
-      {0, 0, 0, 0, 0, 2}};
+namespace puyogame {
+static const VVI ACTIONSDICT = {
+    {1, 1, 0, 0, 0, 0}, {2, 0, 0, 0, 0, 0}, {2, 0, 0, 0, 0, 0},
+    {1, 1, 0, 0, 0, 0}, {0, 2, 0, 0, 0, 0}, {0, 1, 1, 0, 0, 0},
+    {0, 2, 0, 0, 0, 0}, {0, 1, 1, 0, 0, 0}, {0, 0, 2, 0, 0, 0},
+    {0, 0, 1, 1, 0, 0}, {0, 0, 2, 0, 0, 0}, {0, 0, 1, 1, 0, 0},
+    {0, 0, 0, 2, 0, 0}, {0, 0, 0, 1, 1, 0}, {0, 0, 0, 2, 0, 0},
+    {0, 0, 0, 1, 1, 0}, {0, 0, 0, 0, 2, 0}, {0, 0, 0, 0, 1, 1},
+    {0, 0, 0, 0, 2, 0}, {0, 0, 0, 0, 1, 1}, {0, 0, 0, 0, 0, 2},
+    {0, 0, 0, 0, 0, 2}};
 
-  class Puyo
-  {
+class Puyo {
   public:
     static const int NONE = 0;
     static const int RED = 1;
@@ -46,10 +30,9 @@ namespace puyoGame
 
     Puyo(int color1, int color2);
     void set_direct(int direct);
-  };
+};
 
-  class State
-  {
+class State {
   public:
     VVI gameMap;
     VVI puyos;
@@ -75,5 +58,5 @@ namespace puyoGame
     int calcMaxReward();
 
     static VVI makePuyoSeqs(const int len);
-  };
-} // namespace puyoGame
+};
+} // namespace puyogame

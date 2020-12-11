@@ -1,3 +1,7 @@
 /3rd_party
 /build
 /libtensorflow
+CMakeLists.txt
+/data
+/logs
+evaluate.log

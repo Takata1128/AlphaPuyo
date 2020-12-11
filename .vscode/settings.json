@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "C:\\Users\\s.takata\\.virtualenvs\\cpp_tensorflow-GZ_Fm2b3\\Scripts\\python.exe",
+    "python.pythonPath": "C:\\Users\\rokahikou\\.virtualenvs\\AlphaPuyo-3tcf6cQj\\Scripts\\python.exe",
     "files.associations": {
         "array": "cpp",
         "atomic": "cpp",
@@ -72,6 +72,12 @@
         "xstddef": "cpp",
         "xstring": "cpp",
         "xtr1common": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "strstream": "cpp",
+        "bitset": "cpp",
+        "optional": "cpp",
+        "string_view": "cpp",
+        "future": "cpp",
+        "iomanip": "cpp"
     }
 }
