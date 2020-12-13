@@ -13,7 +13,7 @@ add_executable(AlphaPuyo
     PuyoGame.hpp
 )
 
-set(CMAKE_CXX_FLAGS "/std:c++17")
+set(CMAKE_CXX_FLAGS "/std:c++17 /EHsc")
 set(BOOST_ROOT "D:/Boost")
 set(PYTHON_ROOT "C:/Users/rokahikou/AppData/Local/Programs/Python/Python36")
 

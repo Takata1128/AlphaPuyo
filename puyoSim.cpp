@@ -8,14 +8,19 @@
 #include "threadPool.hpp"
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
+#include <fstream>
 #include <future>
 #include <iostream>
 #include <random>
 #include <stdio.h>
 #include <tensorflow/c/c_api.h>
+#include <time.h>
 
 #define MODEL_FILENAME                                                         \
-    "C:/Users/rokahikou/Documents/tensorflow_cpp/build/resources/best.pb"
+    "C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/resources/best.pb"
+
+namespace python = boost::python;
+namespace np = boost::python::numpy;
 
 int greedy(puyogame::State state, const VVI &puyoSeqs) {
     int value = 0;
@@ -74,12 +79,24 @@ void show(int turn, HIST &hist) {
     std::cout << "=== turn :" << turn << " end ===" << std::endl;
 }
 
-int chioceAction(const std::vector<int> &scores) {
+int choiceRandomIdx(const std::vector<int> &scores) {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::discrete_distribution<> distr(scores.begin(), scores.end());
     return distr(gen);
 }
+
+// int choiceMaxIdx(const std::vector<int> &scores) {
+//     int ret = 0;
+//     int mx = 0;
+//     for(int i = 0; i < scores.size(); i++) {
+//         if(mx < scores[i]) {
+//             ret = i;
+//             mx = scores[i];
+//         }
+//     }
+//     return ret;
+// }
 
 std::vector<float> softmax(std::vector<int> &scores) {
     float sum = 0;
@@ -93,19 +110,29 @@ std::vector<float> softmax(std::vector<int> &scores) {
     return ret;
 }
 
+/*--- 現在の時刻を表示する ---*/
+void putTime() {
+    time_t current;
+    struct tm *local;
+    time(&current);              /* 現在の時刻を取得 */
+    local = localtime(&current); /* 地方時の構造体に変換 */
+    printf("%02d:%02d:%02d :: ", local->tm_hour, local->tm_min, local->tm_sec);
+}
+
 std::vector<HIST> play(int number) {
     std::vector<HIST> history;
     mcts::MCTS Mcts = mcts::MCTS();
 
+    putTime();
     std::cout << "Play " << number << " started." << std::endl;
 
     // モデルの読み込み
     if(Mcts.loadGraph(MODEL_FILENAME) == nullptr) {
-        std::cout << "Can't load graph" << std::endl;
-        return history;
+        throw("Can't load graph.");
     }
-    if(!Mcts.prepareSession())
-        return history;
+    if(!Mcts.prepareSession()) {
+        throw("Can't prepare session.");
+    }
 
     VVI puyoSeqs = puyogame::State::makePuyoSeqs(60);
     VVI puyos = puyogame::State::makePuyoSeqs(2);
@@ -125,18 +152,13 @@ std::vector<HIST> play(int number) {
         for(int i = 0; i < scores.size(); i++)
             policies[legalActions[i]] = softmaxScores[i];
 
-        int action = legalActions[chioceAction(scores)];
+        int action = legalActions[choiceRandomIdx(scores)];
 
         rewards.push_back(state.calcMaxReward());
         history.emplace_back(state.gameMap, state.puyos, policies, 0);
 
         int _ = 0;
         state = state.next(action, puyoSeqs[state.turn], _);
-
-        // std::cout << "Play " << number << " : "
-        //           << "turn" << state.turn << ": "
-        //           << "rensa. " << rensa << ", action. " << action <<
-        //           std::endl;
     }
 
     int rMax = 0;
@@ -146,43 +168,63 @@ std::vector<HIST> play(int number) {
         r = rMax;
     }
 
-    // for (int i = 0; i < history.size(); i++)
-    // {
-    //     show(i, history[i]);
-    // }
+    if(!Mcts.closeSession()) {
+        throw("Can't close session.");
+    }
 
-    if(!Mcts.closeSession())
-        return history;
-
+    putTime();
     std::cout << "Play " << number << " ended.  maxReward : " << rMax
               << std::endl;
 
     return history;
 }
 
-namespace python = boost::python;
-namespace np = boost::python::numpy;
-int main() {
-    Py_Initialize();
-    np::initialize();
+std::pair<int, int> evalPlay(int number) {
+    mcts::MCTS Mcts = mcts::MCTS();
 
-    std::vector<HIST> histories;
-    std::vector<std::future<std::vector<HIST>>> futures;
+    std::cout << "Play " << number << " started." << std::endl;
 
-    {
-        thread_pool tp;
-        for(int i = 0; i < SP_GAME_COUNT; i++) {
-            futures.emplace_back(tp.enqueue_task(play, i));
-        }
+    // モデルの読み込み
+    if(Mcts.loadGraph(MODEL_FILENAME) == nullptr) {
+        throw("Can't load graph.");
+    }
+    if(!Mcts.prepareSession()) {
+        throw("Can't prepare session.");
     }
 
-    for(auto &f : futures) {
-        auto hist = f.get();
-        for(auto &h : hist) {
-            histories.emplace_back(h);
-        }
+    VVI puyoSeqs = puyogame::State::makePuyoSeqs(60);
+    VVI puyos = puyogame::State::makePuyoSeqs(2);
+    puyogame::State state =
+        puyogame::State(VVI(GAMEMAP_HEIGHT, VI(GAMEMAP_WIDTH)), puyos, 0);
+
+    int reward = 0;
+    int potential = 0;
+    while(1) {
+        int rensa = state.calcMaxReward();
+        if(state.isDone())
+            break;
+        std::vector<int> scores = Mcts.mctsScores(state, 1.0);
+        std::vector<int> legalActions = state.legalActions();
+
+        int action = legalActions[choiceRandomIdx(scores)];
+
+        potential = std::max(reward, state.calcMaxReward());
+
+        int _ = 0;
+        state = state.next(action, puyoSeqs[state.turn], _);
+        reward = std::max(reward, _);
     }
 
+    if(!Mcts.closeSession()) {
+        throw("Can't close session.");
+    }
+
+    std::cout << "Evaluate " << number << " ended." << std::endl;
+
+    return std::make_pair(reward, potential);
+}
+
+void saveData(std::vector<HIST> &histories) {
     auto main_ns = boost::python::import("save").attr("__dict__");
 
     python::list hist;
@@ -218,10 +260,68 @@ int main() {
 
         // value
         l.append(value);
-
         hist.append(l);
     }
 
     auto func = main_ns["write_data"];
     auto pyresult_numpy = func(hist);
+}
+
+int main(int argc, char *argv[]) {
+    Py_Initialize();
+    np::initialize();
+
+    if(argc <= 1) {
+        std::cout << "Please input argument!" << std::endl;
+        return 1;
+    }
+
+    std::cout << "arg : " << argv[1] << std::endl;
+
+    if(strcmp(argv[1], "self") == 0) {
+        try {
+            thread_pool tp;
+            std::vector<HIST> histories;
+            std::vector<std::future<std::vector<HIST>>> futures;
+            for(int i = 0; i < SP_GAME_COUNT; i++) {
+                futures.emplace_back(tp.enqueue_task(play, i));
+            }
+            for(auto &f : futures) {
+                auto hist = f.get();
+                for(auto &h : hist) {
+                    histories.emplace_back(h);
+                }
+            }
+            saveData(histories);
+        } catch(std::string str) {
+            std::cout << str << std::endl;
+        }
+    } else if(strcmp(argv[1], "eval") == 0) {
+        try {
+            thread_pool tp;
+            using pii = std::pair<int, int>;
+            std::vector<std::future<pii>> futures;
+            for(int i = 0; i < EN_GAME_COUNT; i++) {
+                futures.emplace_back(tp.enqueue_task(evalPlay, i));
+            }
+            int sumr = 0, sump = 0;
+            for(auto &f : futures) {
+                auto rewards = f.get();
+                sumr += rewards.first;
+                sump += rewards.second;
+            }
+            std::ofstream output(
+                "C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/evaluate.log",
+                std::ios::app);
+            output << "Average Rewards : " << sumr / (double)EN_GAME_COUNT
+                   << " Average Potentials : " << sump / (double)EN_GAME_COUNT
+                   << std::endl;
+            output.close();
+        } catch(std::string str) {
+            std::cout << str << std::endl;
+        }
+    } else {
+        std::cout << "Invalid argument!" << std::endl;
+        return 1;
+    }
 }

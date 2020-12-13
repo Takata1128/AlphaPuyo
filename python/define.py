@@ -39,3 +39,7 @@ SP_TEMPERATURE = 1.0
 # for evaluate network
 EN_GAME_COUNT = 40
 EN_TEMPERATURE = 1.0
+
+# path
+RESOURCE_PATH = 'C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/resources'
+DATA_PATH = 'C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/data'

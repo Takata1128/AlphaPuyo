@@ -8,7 +8,7 @@ from keras.layers import (Activation, Add, BatchNormalization, Conv2D, Dense,
 from keras.models import Model
 from keras.regularizers import l2
 
-from define import DN_FILTERS, DN_INPUT_SHAPE, DN_OUTPUT_SIZE, DN_RESIDUAL_NUM
+from define import DN_FILTERS, DN_INPUT_SHAPE, DN_OUTPUT_SIZE, DN_RESIDUAL_NUM, RESOURCE_PATH
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -98,7 +98,7 @@ def dual_network():
 
     # K.set_learning_phase(0)
 
-    model.save('C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/resources/best.h5')
+    model.save(RESOURCE_PATH+'/best.h5')
 
     K.clear_session()
     del model

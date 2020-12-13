@@ -10,7 +10,7 @@ from keras.optimizers import SGD
 from keras.utils import Sequence
 
 from define import (BATCH_SIZE, CHANNEL, DN_OUTPUT_SIZE, HEIGHT, RN_EPOCHS,
-                    WIDTH, DN_INPUT_SHAPE, GAMEMAP_HEIGHT, GAMEMAP_WIDTH, PUYO_COLOR)
+                    WIDTH, DN_INPUT_SHAPE, GAMEMAP_HEIGHT, GAMEMAP_WIDTH, PUYO_COLOR, DATA_PATH, RESOURCE_PATH)
 
 
 def encode(stage, puyos):
@@ -44,7 +44,7 @@ def data2Binary(stage, nowpuyo, nextpuyo):
 class TrainDataGenerator(Sequence):
     def __init__(self):
         self.data_paths = sorted(
-            Path('C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/data').glob('*.history'))
+            Path(DATA_PATH).glob('*.history'))
         self.length = len(self.data_paths)
         # self.max_v = 0
         # for item_path in self.data_paths:
@@ -103,7 +103,7 @@ class LossHistory(Callback):
 # 学習データの読み込み
 def load_data():
     history_path = sorted(
-        Path('C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/data').glob('*.history'))[-1]
+        Path(DATA_PATH).glob('*.history'))[-1]
     with history_path.open(mode='rb') as f:
         return pickle.load(f)
 
@@ -113,7 +113,7 @@ def load_data():
 def train_network():
     train_gen = TrainDataGenerator()
     model = load_model(
-        'C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/resources/best.h5')
+        RESOURCE_PATH+'/best.h5')
 
     # モデルのコンパイル
     model.compile(loss=['categorical_crossentropy', 'mse'],

@@ -12,7 +12,7 @@
 #define EVALUATE_DEPTH 5
 #define TSUMO_SIZE 7
 #define TRY_COUNT 10
-#define PV_EVALUATE_COUNT 200
+#define PV_EVALUATE_COUNT 500
 #define C_PUCT 5.0
 
 // for construction of network
@@ -29,7 +29,7 @@
 #define BATCH_SIZE 128
 
 // for selfplay
-#define SP_GAME_COUNT 150
+#define SP_GAME_COUNT 100
 #define SP_TEMPERATURE 1.0
 
 // for evaluate network
