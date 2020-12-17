@@ -145,7 +145,7 @@ def train_network():
     print('')
 
     # 最新プレイヤーのモデル保存
-    model.save('C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/resources/latest.h5')
+    model.save(RESOURCE_PATH+'/latest.h5')
 
     K.clear_session()
     del model

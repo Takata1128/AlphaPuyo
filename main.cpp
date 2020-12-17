@@ -137,6 +137,7 @@ int main() {
     const auto probs = static_cast<float *>(TF_TensorData(output_tensors[0]));
 
     float sum = 0;
+    std::cout << "pi_size: " << TF_TensorElementCount(output_tensors[0]);
     std::cout << "pi: ";
     for(int i = 0; i < 22; i++) {
         std::cout << probs[i] << " ";
@@ -147,6 +148,7 @@ int main() {
 
     const auto value = static_cast<float *>(TF_TensorData(output_tensors[1]));
 
+    std::cout << "v_size: " << TF_TensorElementCount(output_tensors[1]);
     std::cout << "v: ";
     std::cout << value[0] << std::endl;
     std::cout << std::endl;

@@ -6,41 +6,40 @@
 
 namespace mcts {
 
-class Node {
-  private:
-    TF_Graph *model;
-    TF_Session *sess;
-
-  public:
-    puyogame::State state;
-    float p, w;
-    int r, d, n, turn;
-    std::vector<std::unique_ptr<Node>> childNodes;
-    Node(puyogame::State state, int d, float p, int r, int turn,
-         TF_Graph *graph, TF_Session *sess);
-    float evaluate(const VVI &puyoSeqs);
-    int nextChildNode();
-};
-
 class MCTS {
   private:
     TF_Graph *model;
     TF_Session *sess;
+    std::vector<TF_Output> inputs;
+    std::vector<TF_Output> outputs;
+    const std::vector<std::int64_t> input_dims = {1, GAMEMAP_HEIGHT,
+                                                  GAMEMAP_WIDTH, CHANNEL_SIZE};
+
+    class Node {
+      public:
+        puyogame::State state;
+        float p, w;
+        int r, d, n, turn;
+        std::vector<std::unique_ptr<Node>> childNodes;
+        float evaluate(const VVI &puyoSeqs, MCTS &parent);
+        int nextChildNode();
+        Node(puyogame::State state, int d, float p, int r, int turn);
+    };
 
   public:
-    MCTS() {
-        model = nullptr;
-        sess = nullptr;
-    }
+    MCTS();
 
     TF_Graph *loadGraph(const char *fileName);
 
     static std::vector<int> legalActions(VVI field);
 
     static std::vector<int>
-    nodesToScores(const std::vector<std::unique_ptr<mcts::Node>> &nodes);
+    nodesToScores(const std::vector<std::unique_ptr<Node>> &nodes);
 
-    std::vector<int> mctsScores(puyogame::State state, float temperature);
+    std::vector<int> randomMcts(puyogame::State state, float temperature);
+
+    std::vector<int> normalMcts(puyogame::State state, const VVI &puyoSeqs,
+                                float temperature);
 
     static std::vector<float> boltzman(std::vector<int> scores,
                                        float temperature);
@@ -52,10 +51,9 @@ class MCTS {
 
     bool prepareSession();
 
-    static std::pair<std::vector<float>, float>
-    predict(const puyogame::State &state, TF_Graph *model, TF_Session *sess);
+    std::pair<std::vector<float>, float> predict(puyogame::State &state);
 
-    bool closeSession();
+    bool close();
 };
 
 } // namespace mcts

@@ -4,4 +4,5 @@
 CMakeLists.txt
 /data
 /logs
+/python/img
 evaluate.log

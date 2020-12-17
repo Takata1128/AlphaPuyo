@@ -8,7 +8,7 @@ from keras.models import load_model
 from define import (ACTION_KIND, CHANNEL_SIZE, DN_INPUT_SHAPE, EVALUATE_DEPTH,
                     FIELD_CHANNELS, GAMEMAP_HEIGHT, GAMEMAP_SHAPE,
                     GAMEMAP_WIDTH, MAX_STEP, PUYO_CHANNELS, PUYO_COLOR,
-                    PV_EVALUATE_COUNT, TRY_COUNT, TSUMO_SIZE, TURN_CHANNELS)
+                    PV_EVALUATE_COUNT, TRY_COUNT, TSUMO_SIZE, TURN_CHANNELS, RESOURCE_PATH)
 from puyo_game import Puyo, State, actions_dict, field_to_img
 
 # patterns_dict = {
@@ -227,7 +227,7 @@ def boltzman(xs, temperature):
 
 
 if __name__ == '__main__':
-    model = load_model('./model/best.h5')
+    model = load_model(RESOURCE_PATH+'/best.h5')
     puyo_list = list()
     for i in range(MAX_STEP):
         puyo_list.append(

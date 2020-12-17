@@ -8,6 +8,7 @@
 #include "threadPool.hpp"
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
+#include <filesystem>
 #include <fstream>
 #include <future>
 #include <iostream>
@@ -15,9 +16,11 @@
 #include <stdio.h>
 #include <tensorflow/c/c_api.h>
 #include <time.h>
-
 #define MODEL_FILENAME                                                         \
     "C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/resources/best.pb"
+
+const std::string MODEL_DIR =
+    "C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/resources";
 
 namespace python = boost::python;
 namespace np = boost::python::numpy;
@@ -145,7 +148,12 @@ std::vector<HIST> play(int number) {
         int rensa = state.calcMaxReward();
         if(state.isDone())
             break;
-        std::vector<int> scores = Mcts.mctsScores(state, 1.0);
+        if(number % THREAD_NUM == 0) {
+            std::cout << "turn : " << state.turn << std::endl;
+        }
+
+        // random or normal
+        std::vector<int> scores = Mcts.randomMcts(state, 1.0);
         std::vector<float> softmaxScores = softmax(scores);
         std::vector<int> legalActions = state.legalActions();
         std::vector<float> policies(ACTION_KIND);
@@ -156,6 +164,7 @@ std::vector<HIST> play(int number) {
 
         rewards.push_back(state.calcMaxReward());
         history.emplace_back(state.gameMap, state.puyos, policies, 0);
+        // show(state.turn, history.back());
 
         int _ = 0;
         state = state.next(action, puyoSeqs[state.turn], _);
@@ -168,7 +177,7 @@ std::vector<HIST> play(int number) {
         r = rMax;
     }
 
-    if(!Mcts.closeSession()) {
+    if(!Mcts.close()) {
         throw("Can't close session.");
     }
 
@@ -182,6 +191,7 @@ std::vector<HIST> play(int number) {
 std::pair<int, int> evalPlay(int number) {
     mcts::MCTS Mcts = mcts::MCTS();
 
+    putTime();
     std::cout << "Play " << number << " started." << std::endl;
 
     // モデルの読み込み
@@ -203,7 +213,8 @@ std::pair<int, int> evalPlay(int number) {
         int rensa = state.calcMaxReward();
         if(state.isDone())
             break;
-        std::vector<int> scores = Mcts.mctsScores(state, 1.0);
+        // random or normal
+        std::vector<int> scores = Mcts.randomMcts(state, 1.0);
         std::vector<int> legalActions = state.legalActions();
 
         int action = legalActions[choiceRandomIdx(scores)];
@@ -215,10 +226,11 @@ std::pair<int, int> evalPlay(int number) {
         reward = std::max(reward, _);
     }
 
-    if(!Mcts.closeSession()) {
+    if(!Mcts.close()) {
         throw("Can't close session.");
     }
 
+    putTime();
     std::cout << "Evaluate " << number << " ended." << std::endl;
 
     return std::make_pair(reward, potential);
@@ -272,24 +284,23 @@ int main(int argc, char *argv[]) {
     np::initialize();
 
     if(argc <= 1) {
-        std::cout << "Please input argument!" << std::endl;
-        return 1;
+        play(0);
     }
-
-    std::cout << "arg : " << argv[1] << std::endl;
-
     if(strcmp(argv[1], "self") == 0) {
         try {
-            thread_pool tp;
+            const int UNIT = SP_GAME_COUNT / THREAD_NUM;
             std::vector<HIST> histories;
-            std::vector<std::future<std::vector<HIST>>> futures;
-            for(int i = 0; i < SP_GAME_COUNT; i++) {
-                futures.emplace_back(tp.enqueue_task(play, i));
-            }
-            for(auto &f : futures) {
-                auto hist = f.get();
-                for(auto &h : hist) {
-                    histories.emplace_back(h);
+            for(int u = 0; u < UNIT; u++) {
+                std::vector<std::future<std::vector<HIST>>> futures;
+                for(int i = 0; i < THREAD_NUM; i++) {
+                    futures.push_back(std::async(std::launch::async, play,
+                                                 u * THREAD_NUM + i));
+                }
+                for(auto &f : futures) {
+                    auto hist = f.get();
+                    for(auto &h : hist) {
+                        histories.emplace_back(h);
+                    }
                 }
             }
             saveData(histories);
@@ -298,17 +309,20 @@ int main(int argc, char *argv[]) {
         }
     } else if(strcmp(argv[1], "eval") == 0) {
         try {
-            thread_pool tp;
             using pii = std::pair<int, int>;
-            std::vector<std::future<pii>> futures;
-            for(int i = 0; i < EN_GAME_COUNT; i++) {
-                futures.emplace_back(tp.enqueue_task(evalPlay, i));
-            }
+            const int UNIT = EN_GAME_COUNT / THREAD_NUM;
             int sumr = 0, sump = 0;
-            for(auto &f : futures) {
-                auto rewards = f.get();
-                sumr += rewards.first;
-                sump += rewards.second;
+            for(int u = 0; u < UNIT; u++) {
+                std::vector<std::future<pii>> futures;
+                for(int i = 0; i < THREAD_NUM; i++) {
+                    futures.push_back(std::async(std::launch::async, evalPlay,
+                                                 u * THREAD_NUM + i));
+                }
+                for(auto &f : futures) {
+                    auto rewards = f.get();
+                    sumr += rewards.first;
+                    sump += rewards.second;
+                }
             }
             std::ofstream output(
                 "C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/evaluate.log",
@@ -317,6 +331,9 @@ int main(int argc, char *argv[]) {
                    << " Average Potentials : " << sump / (double)EN_GAME_COUNT
                    << std::endl;
             output.close();
+            std::filesystem::copy(
+                MODEL_DIR + "/latest.h5", MODEL_DIR + "/best.h5",
+                std::filesystem::copy_options::overwrite_existing);
         } catch(std::string str) {
             std::cout << str << std::endl;
         }
