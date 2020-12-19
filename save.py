@@ -57,8 +57,8 @@ def write_data(history):
     random.shuffle(new_history)
     chunk_history = chunks(new_history, 128)
     now = datetime.now()
-    if os.path.exists('./data/'):
-        shutil.rmtree('./data/')
+    # if os.path.exists('./data/'):
+    #     shutil.rmtree('./data/')
     os.makedirs('./data/', exist_ok=True)
     for i, c in enumerate(chunk_history):
         path = './data/{:04}{:02}{:02}{:02}_{}.history'.format(

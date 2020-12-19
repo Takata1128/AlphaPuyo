@@ -288,21 +288,18 @@ int main(int argc, char *argv[]) {
     }
     if(strcmp(argv[1], "self") == 0) {
         try {
-            const int UNIT = SP_GAME_COUNT / THREAD_NUM;
             std::vector<HIST> histories;
-            for(int u = 0; u < UNIT; u++) {
-                std::vector<std::future<std::vector<HIST>>> futures;
-                for(int i = 0; i < THREAD_NUM; i++) {
-                    futures.push_back(std::async(std::launch::async, play,
-                                                 u * THREAD_NUM + i));
-                }
-                for(auto &f : futures) {
-                    auto hist = f.get();
-                    for(auto &h : hist) {
-                        histories.emplace_back(h);
-                    }
+            std::vector<std::future<std::vector<HIST>>> futures;
+            for(int i = 0; i < THREAD_NUM; i++) {
+                futures.push_back(std::async(std::launch::async, play, i));
+            }
+            for(auto &f : futures) {
+                auto hist = f.get();
+                for(auto &h : hist) {
+                    histories.emplace_back(h);
                 }
             }
+
             saveData(histories);
         } catch(std::string str) {
             std::cout << str << std::endl;
@@ -310,20 +307,18 @@ int main(int argc, char *argv[]) {
     } else if(strcmp(argv[1], "eval") == 0) {
         try {
             using pii = std::pair<int, int>;
-            const int UNIT = EN_GAME_COUNT / THREAD_NUM;
             int sumr = 0, sump = 0;
-            for(int u = 0; u < UNIT; u++) {
-                std::vector<std::future<pii>> futures;
-                for(int i = 0; i < THREAD_NUM; i++) {
-                    futures.push_back(std::async(std::launch::async, evalPlay,
-                                                 u * THREAD_NUM + i));
-                }
-                for(auto &f : futures) {
-                    auto rewards = f.get();
-                    sumr += rewards.first;
-                    sump += rewards.second;
-                }
+            std::vector<std::future<pii>> futures;
+            for(int i = 0; i < THREAD_NUM; i++) {
+                futures.push_back(
+                    std::async(std::launch::async, evalPlay, THREAD_NUM + i));
             }
+            for(auto &f : futures) {
+                auto rewards = f.get();
+                sumr += rewards.first;
+                sump += rewards.second;
+            }
+
             std::ofstream output(
                 "C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/evaluate.log",
                 std::ios::app);

@@ -9,10 +9,10 @@
 #define MAX_STEP 50
 
 // for MCTS
-#define EVALUATE_DEPTH 4
+#define EVALUATE_DEPTH 5
 #define TSUMO_SIZE 6
 #define TRY_COUNT 10
-#define PV_EVALUATE_COUNT 50
+#define PV_EVALUATE_COUNT 100
 #define C_PUCT 10.0
 
 // for construction of network
@@ -37,7 +37,7 @@
 #define EN_TEMPERATURE 1.0
 
 // for multithread
-#define THREAD_NUM 5
+#define THREAD_NUM 10
 
 using VI = std::vector<int>;
 using VVI = std::vector<std::vector<int>>;
