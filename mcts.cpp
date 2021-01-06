@@ -1,5 +1,6 @@
 #include "mcts.hpp"
 #include "PuyoGame.hpp"
+#include "dataProcess.hpp"
 #include "define.hpp"
 #include <algorithm>
 #include <cassert>
@@ -7,25 +8,18 @@
 #include <iostream>
 #include <numeric>
 
-mcts::MCTS::Node::Node(puyogame::State state, int d, float p, int r, int turn) {
-    this->state = state;
-    this->p = p;
-    this->d = d;
-    this->r = r;
-    this->w = 0;
-    this->n = 0;
-    this->turn = turn;
-}
+mcts::MCTS::Node::Node(puyogame::State _state, int _d, float _p, int _r)
+    : state(_state), d(_d), p(_p), r(_r), w(0), n(0) {}
 
 float mcts::MCTS::Node::evaluate(const VVI &puyoSeqs, MCTS &parent) {
-    if(this->state.isDone() || this->turn == MAX_STEP) {
-        float value = (this->state.isLose() ? -1 : this->r);
+    if(this->state.isDone()) {
+        float value = (this->state.isLose() ? -1.0f : this->r);
         this->w += value;
         this->n++;
         return value;
     }
 
-    if(d == EVALUATE_DEPTH) {
+    if(this->d == EVALUATE_DEPTH) {
         float value = this->state.calcMaxReward();
         this->w += value;
         this->n++;
@@ -41,14 +35,13 @@ float mcts::MCTS::Node::evaluate(const VVI &puyoSeqs, MCTS &parent) {
             int reward = 0;
             puyogame::State nextState =
                 this->state.next(actions[i], puyoSeqs[this->d], reward);
-            this->childNodes.push_back(std::unique_ptr<Node>(
-                new Node(nextState, this->d + 1, policies[i],
-                         std::max(this->r, reward), this->turn + 1)));
+            this->childNodes.push_back(Node(nextState, this->d + 1, policies[i],
+                                            std::max(this->r, reward)));
         }
         return value;
     } else {
         float value =
-            this->childNodes[nextChildNode()]->evaluate(puyoSeqs, parent);
+            this->childNodes[nextChildNode()].evaluate(puyoSeqs, parent);
         this->w += value;
         this->n++;
         return value;
@@ -56,12 +49,13 @@ float mcts::MCTS::Node::evaluate(const VVI &puyoSeqs, MCTS &parent) {
 }
 
 int mcts::MCTS::Node::nextChildNode() {
-    auto v = nodesToScores(childNodes);
-    int t = std::accumulate(v.begin(), v.end(), 0);
+    auto v = nodesToScores(this->childNodes);
+    float t = (float)std::accumulate(v.begin(), v.end(), 0);
     std::vector<float> pucbValues;
     for(auto &c : childNodes) {
-        pucbValues.push_back((c->n ? (c->w / (float)c->n) : 0.0) +
-                             C_PUCT * c->p * sqrt(t) / (float)(1 + c->n));
+        pucbValues.push_back((c.n != 0 ? (c.w / (float)c.n) : 0.0) +
+                             C_PUCT * c.p *
+                                 (sqrtf((float)t) / (float)(1.0 + c.n)));
     }
     int idx =
         std::distance(pucbValues.begin(),
@@ -70,46 +64,49 @@ int mcts::MCTS::Node::nextChildNode() {
 }
 
 TF_Graph *mcts::MCTS::loadGraph(const char *fileName) {
-    model = tf_utils::LoadGraph(fileName);
-    return model;
+    mModel = tf_utils::LoadGraph(fileName);
+    return mModel;
 }
 
-mcts::MCTS::MCTS() {
-    model = nullptr;
-    sess = nullptr;
-}
+mcts::MCTS::MCTS() : mModel(nullptr), mSess(nullptr) {}
 
-std::vector<int>
-mcts::MCTS::nodesToScores(const std::vector<std::unique_ptr<Node>> &nodes) {
+std::vector<int> mcts::MCTS::nodesToScores(const std::vector<Node> &nodes) {
     std::vector<int> ret;
     for(auto &c : nodes)
-        ret.push_back(c->n);
+        ret.push_back(c.n);
     return ret;
 }
 
-std::vector<int> mcts::MCTS::randomMcts(puyogame::State state,
-                                        float temperature) {
+std::vector<double> mcts::MCTS::randomMcts(puyogame::State state,
+                                           float temperature) {
     int childNodeNum = state.legalActions().size();
-    std::vector<int> childNodesPlayCounts(childNodeNum);
+    std::vector<int> scores(childNodeNum);
     for(int i = 0; i < TRY_COUNT; i++) {
         VVI puyoSeqs = puyogame::State::makePuyoSeqs(TSUMO_SIZE);
         puyogame::State tmp = state;
-        auto rootNode = std::unique_ptr<Node>(new Node(tmp, 0, 0, 0, tmp.turn));
+        auto rootNode = Node(tmp, 0, 0, 0);
         for(int j = 0; j < PV_EVALUATE_COUNT; j++) {
-            rootNode->evaluate(puyoSeqs, *this);
+            rootNode.evaluate(puyoSeqs, *this);
         }
         for(int j = 0; j < childNodeNum; j++) {
-            childNodesPlayCounts[j] += rootNode->childNodes[j]->n;
+            scores[j] += rootNode.childNodes[j].n;
         }
     }
-    return childNodesPlayCounts;
+    if(temperature < 0.001) { // temperature == 0
+        int action = std::distance(
+            scores.begin(), std::max_element(scores.begin(), scores.end()));
+        std::vector<double> ret(scores.size(), 0.0);
+        ret[action] = 1.0;
+        return ret;
+    } else {
+        return boltzman(scores, temperature);
+    }
 }
 
-std::vector<int> mcts::MCTS::normalMcts(puyogame::State state,
-                                        const VVI &puyoSeqs,
-                                        float temperature) {
+std::vector<double> mcts::MCTS::normalMcts(puyogame::State state,
+                                           const VVI &puyoSeqs,
+                                           float temperature) {
     int childNodeNum = state.legalActions().size();
-    std::vector<int> childNodesPlayCounts(childNodeNum);
     puyogame::State tmp = state;
     VVI evalPuyoSeqs(TSUMO_SIZE, VI(2));
     for(int i = 0; i < TSUMO_SIZE; i++) {
@@ -117,137 +114,115 @@ std::vector<int> mcts::MCTS::normalMcts(puyogame::State state,
             evalPuyoSeqs[i][j] = puyoSeqs[state.turn + i][j];
         }
     }
-
-    auto rootNode = std::unique_ptr<Node>(new Node(tmp, 0, 0, 0, tmp.turn));
-
+    auto rootNode = Node(tmp, 0, 0, 0);
     for(int j = 0; j < PV_EVALUATE_COUNT; j++) {
-        rootNode->evaluate(evalPuyoSeqs, *this);
+        rootNode.evaluate(evalPuyoSeqs, *this);
     }
-    for(int j = 0; j < childNodeNum; j++) {
-        childNodesPlayCounts[j] += rootNode->childNodes[j]->n;
+    auto scores = nodesToScores(rootNode.childNodes);
+    if(temperature < 0.001) { // temperature == 0
+        int action = std::distance(
+            scores.begin(), std::max_element(scores.begin(), scores.end()));
+        std::vector<double> ret(scores.size(), 0.0);
+        ret[action] = 1.0;
+        return ret;
+    } else {
+        return boltzman(scores, temperature);
     }
-
-    return childNodesPlayCounts;
 }
 
-std::vector<float> mcts::MCTS::encode(const puyogame::State &state) {
-    return data2Binary(state.gameMap, state.puyos[0], state.puyos[1],
-                       state.turn);
+std::vector<double> mcts::MCTS::mcts(puyogame::State state, const VVI &puyoSeqs,
+                                     float temperature, int type) {
+    if(type == SINGLE) {
+        return normalMcts(state, puyoSeqs, temperature);
+    } else if(type == RANDOM) {
+        return randomMcts(state, temperature);
+    } else {
+        throw "mcts type error!";
+    }
 }
 
-std::vector<float> mcts::MCTS::data2Binary(const VVI &stage, VI nowPuyo,
-                                           VI nextPuyo, int turn) {
-    std::vector<std::vector<std::vector<int>>> mat(
-        GAMEMAP_HEIGHT, std::vector<std::vector<int>>(
-                            GAMEMAP_WIDTH, std::vector<int>(CHANNEL_SIZE)));
-    for(int i = 0; i < GAMEMAP_HEIGHT; i++)
-        for(int j = 0; j < GAMEMAP_WIDTH; j++)
-            mat[i][j][stage[i][j]] = 1;
-
-    VI puyoData = VI(4);
-    for(int i = 0; i < 2; i++)
-        puyoData[i] = nowPuyo[i];
-    for(int i = 0; i < 2; i++)
-        puyoData[i + 2] = nextPuyo[i];
-    for(int k = 0; k < 4; k++)
-        for(int i = 0; i < GAMEMAP_HEIGHT; i++)
-            for(int j = 0; j < GAMEMAP_WIDTH; j++)
-                mat[i][j][puyoData[k] + PUYO_COLOR + k * PUYO_COLOR] = 1;
-    std::vector<float> ret(GAMEMAP_HEIGHT * GAMEMAP_WIDTH * CHANNEL_SIZE);
-    int cur = 0;
-    for(int i = 0; i < GAMEMAP_HEIGHT; i++)
-        for(int j = 0; j < GAMEMAP_WIDTH; j++)
-            for(int k = 0; k < CHANNEL_SIZE; k++)
-                ret[cur++] = mat[i][j][k];
+std::vector<double> mcts::MCTS::boltzman(const VI &scores,
+                                         const float temperature) {
+    std::vector<double> ret(scores.size());
+    double sum = 0.0;
+    for(int i = 0; i < scores.size(); i++) {
+        ret[i] = std::pow((double)scores[i], 1.0 / temperature);
+        sum += ret[i];
+    }
+    for(int i = 0; i < scores.size(); i++) {
+        ret[i] /= sum;
+    }
     return ret;
 }
 
 bool mcts::MCTS::prepareSession() {
     /* prepare session */
-    TF_Status *status = TF_NewStatus();
+    mStatus = TF_NewStatus();
     TF_SessionOptions *options = TF_NewSessionOptions();
-    sess = TF_NewSession(model, options, status);
+    mSess = TF_NewSession(mModel, options, mStatus);
     TF_DeleteSessionOptions(options);
 
-    if(TF_GetCode(status) != TF_OK) {
-        TF_DeleteStatus(status);
+    if(TF_GetCode(mStatus) != TF_OK) {
+        TF_DeleteStatus(mStatus);
         return false;
     }
-    TF_DeleteStatus(status);
 
-    inputs.resize(1);
-    outputs.resize(2);
+    mInputs.resize(1);
+    mOutputs.resize(2);
 
     /* prepare input tensor op */
-    TF_Output input_op = {TF_GraphOperationByName(model, "input_1"), 0};
+    TF_Output input_op = {TF_GraphOperationByName(mModel, "input_1"), 0};
     if(input_op.oper == nullptr) {
         return false;
     }
     /* prepare output tensor op */
-    TF_Output out_op1 = {TF_GraphOperationByName(model, "pi/Softmax")};
+    TF_Output out_op1 = {TF_GraphOperationByName(mModel, "pi/Softmax")};
     if(out_op1.oper == nullptr) {
         return false;
     }
-    TF_Output out_op2 = {TF_GraphOperationByName(model, "v/Identity")};
+    TF_Output out_op2 = {TF_GraphOperationByName(mModel, "v/Identity")};
     if(out_op2.oper == nullptr) {
         return false;
     }
 
-    inputs[0] = input_op;
-    outputs[0] = out_op1;
-    outputs[1] = out_op2;
+    mInputs[0] = input_op;
+    mOutputs[0] = out_op1;
+    mOutputs[1] = out_op2;
 
     return true;
 }
 
 bool mcts::MCTS::close() {
-    TF_Status *status = TF_NewStatus();
-    TF_CloseSession(sess, status);
-    if(TF_GetCode(status) != TF_OK) {
-        std::cout << "Error close session";
-        TF_DeleteStatus(status);
-        return false;
-    }
-
-    TF_DeleteSession(sess, status);
-    if(TF_GetCode(status) != TF_OK) {
+    if(tf_utils::DeleteSession(mSess, mStatus) != TF_OK) {
         std::cout << "Error delete session";
-        TF_DeleteStatus(status);
+        TF_DeleteStatus(mStatus);
         return false;
     }
 
-    TF_DeleteGraph(model);
-    TF_DeleteStatus(status);
+    tf_utils::DeleteGraph(mModel);
+    TF_DeleteStatus(mStatus);
     return true;
 }
 
 std::pair<std::vector<float>, float>
 mcts::MCTS::predict(puyogame::State &state) {
-    std::vector<float> input_vals = mcts::MCTS::encode(state);
+    std::vector<float> input_vals = dataprocess::encode(state);
 
     TF_Tensor *input_tensor = tf_utils::CreateTensor(
-        TF_FLOAT, input_dims.data(), input_dims.size(), input_vals.data(),
+        TF_FLOAT, mInput_dims.data(), mInput_dims.size(), input_vals.data(),
         input_vals.size() * sizeof(float));
 
-    TF_Tensor *output_tensor1 = nullptr;
-    TF_Tensor *output_tensor2 = nullptr;
-
     /* prepare session */
-    std::vector<TF_Tensor *> input_tensors(1);
-    std::vector<TF_Tensor *> output_tensors(2);
-
-    input_tensors[0] = input_tensor;
-    output_tensors[0] = output_tensor1;
-    output_tensors[1] = output_tensor2;
+    std::vector<TF_Tensor *> input_tensors(1, input_tensor);
+    std::vector<TF_Tensor *> output_tensors(2, nullptr);
 
     /* run session */
-    TF_Status *status = TF_NewStatus();
-    tf_utils::RunSession(sess, inputs, input_tensors, outputs, output_tensors,
-                         status);
+    tf_utils::RunSession(mSess, mInputs, input_tensors, mOutputs,
+                         output_tensors, mStatus);
 
-    if(TF_GetCode(status) != TF_OK) {
+    if(TF_GetCode(mStatus) != TF_OK) {
         std::cout << "Error run session";
-        TF_DeleteStatus(status);
+        TF_DeleteStatus(mStatus);
     }
 
     const auto probs = static_cast<float *>(TF_TensorData(output_tensors[0]));
@@ -269,9 +244,7 @@ mcts::MCTS::predict(puyogame::State &state) {
     const auto value = static_cast<float *>(TF_TensorData(output_tensors[1]));
     auto val = value[0];
 
-    TF_DeleteTensor(input_tensor);
-    TF_DeleteTensor(output_tensor1);
-    TF_DeleteTensor(output_tensor2);
-    TF_DeleteStatus(status);
+    tf_utils::DeleteTensors(input_tensors);
+    tf_utils::DeleteTensors(output_tensors);
     return {ret, val};
 }

@@ -2,42 +2,41 @@
 #include <vector>
 
 //ゲーム定義
-#define GAMEMAP_HEIGHT 13
-#define GAMEMAP_WIDTH 6
-#define ACTION_KIND 22
-#define PUYO_COLOR 4
-#define MAX_STEP 50
+#define GAMEMAP_HEIGHT 7
+#define GAMEMAP_WIDTH 4
+#define ACTION_KIND (2 * 3 + (GAMEMAP_WIDTH - 2) * 4)
+#define PUYO_COLOR 3
+#define MAX_STEP 25
+#define DEAD_X 1
+#define DEAD_Y 1
 
 // for MCTS
-#define EVALUATE_DEPTH 5
-#define TSUMO_SIZE 6
-#define TRY_COUNT 10
-#define PV_EVALUATE_COUNT 100
-#define C_PUCT 10.0
+#define SINGLE 0
+#define RANDOM 1
+
+#define EVALUATE_DEPTH 10
+#define TSUMO_SIZE 11
+#define TRY_COUNT 20
+#define PV_EVALUATE_COUNT 1000
+#define C_PUCT 15.0
+#define MCTS_TYPE SINGLE
+#define MCTS_TEMPERATURE 1.0
 
 // for construction of network
-#define FIELD_CHANNELS 5
-#define PUYO_CHANNELS 16
+#define FIELD_CHANNELS (PUYO_COLOR + 1)
+#define PUYO_CHANNELS (PUYO_COLOR * 4)
 #define TURN_CHANNELS 6
 #define CHANNEL_SIZE (FIELD_CHANNELS + PUYO_CHANNELS)
-#define DN_FILTERS 128
-#define DN_RESIDUAL_NUM 5
 #define DN_OUTPUT_SIZE ACTION_KIND
-
-// for training network
-#define RN_EPOCHS 20
-#define BATCH_SIZE 128
 
 // for selfplay
 #define SP_GAME_COUNT 100
-#define SP_TEMPERATURE 1.0
 
 // for evaluate network
 #define EN_GAME_COUNT 50
-#define EN_TEMPERATURE 1.0
 
 // for multithread
-#define THREAD_NUM 10
+#define THREAD_NUM 5
 
 using VI = std::vector<int>;
 using VVI = std::vector<std::vector<int>>;

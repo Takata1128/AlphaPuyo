@@ -41,13 +41,13 @@ def residual_block():
         sc = x
         x = conv(DN_FILTERS)(x)
         x = BatchNormalization()(x)
-        # x = Activation('relu')(x)
-        x = LeakyReLU(alpha=0.01)(x)
+        x = Activation('relu')(x)
+        # x = LeakyReLU(alpha=0.01)(x)
         x = conv(DN_FILTERS)(x)
         x = BatchNormalization()(x)
         x = Add()([x, sc])
-        # x = Activation('relu')(x)
-        x = LeakyReLU(alpha=0.01)(x)
+        x = Activation('relu')(x)
+        # x = LeakyReLU(alpha=0.01)(x)
         return x
     return f
 
@@ -57,9 +57,9 @@ def dual_network():
 
     x = conv(DN_FILTERS)(input)
     x = BatchNormalization()(x)
-    # x = Activation('relu')(x)
+    x = Activation('relu')(x)
 
-    x = LeakyReLU(alpha=0.01)(x)
+    # x = LeakyReLU(alpha=0.01)(x)
 
     for i in range(DN_RESIDUAL_NUM):
         x = residual_block()(x)
@@ -71,8 +71,8 @@ def dual_network():
         use_bias=False,
         kernel_regularizer=l2(0.0005))(x)
     p = BatchNormalization()(p)
-    # p = Activation('relu')(p)
-    x = LeakyReLU(alpha=0.01)(x)
+    p = Activation('relu')(p)
+    # x = LeakyReLU(alpha=0.01)(x)
 
     p = Flatten()(p)
     p = Dense(DN_OUTPUT_SIZE, kernel_regularizer=l2(
@@ -85,8 +85,8 @@ def dual_network():
         use_bias=False,
         kernel_regularizer=l2(0.0005))(x)
     v = BatchNormalization()(v)
-    # v = Activation('relu')(v)
-    x = LeakyReLU(alpha=0.01)(x)
+    v = Activation('relu')(v)
+    # x = LeakyReLU(alpha=0.01)(x)
     v = Flatten()(v)
     v = Dense(256, kernel_regularizer=l2(0.0005))(v)
     v = Activation('relu')(v)
@@ -95,8 +95,6 @@ def dual_network():
 
     model = Model(inputs=input, outputs=[p, v])
     model.summary()
-
-    # K.set_learning_phase(0)
 
     model.save(RESOURCE_PATH+'/best.h5')
 

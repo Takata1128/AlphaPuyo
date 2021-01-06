@@ -145,7 +145,7 @@ def train_network():
     print('')
 
     # 最新プレイヤーのモデル保存
-    model.save(RESOURCE_PATH+'/latest.h5')
+    model.save(RESOURCE_PATH+'/best.h5')
 
     K.clear_session()
     del model

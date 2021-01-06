@@ -8,6 +8,7 @@ from keras.models import load_model
 from keras import backend as K
 from tensorflow.python.framework.graph_util import convert_variables_to_constants
 import json
+import sys
 from define import DATA_PATH, RESOURCE_PATH
 
 
@@ -61,8 +62,8 @@ def get_model_info(tf_model_filename):
 
 
 if __name__ == '__main__':
-    # convert
-    keras_model_filename = RESOURCE_PATH+'/best.h5'
-    tf_model_filename = RESOURCE_PATH+'/best.pb'
+    args = sys.argv
+    keras_model_filename = RESOURCE_PATH+'/'+args[1]+'.h5'
+    tf_model_filename = RESOURCE_PATH+'/'+args[1]+'.pb'
     convert_keras_to_tensorflow(keras_model_filename, tf_model_filename)
     get_model_info(tf_model_filename)

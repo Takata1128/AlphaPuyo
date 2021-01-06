@@ -61,8 +61,8 @@ def write_data(history):
     #     shutil.rmtree('./data/')
     os.makedirs('./data/', exist_ok=True)
     for i, c in enumerate(chunk_history):
-        path = './data/{:04}{:02}{:02}{:02}_{}.history'.format(
-            now.year, now.month, now.day, now.hour, i)
+        path = './data/{:04}{:02}{:02}{:02}{:02}_{}.history'.format(
+            now.year, now.month, now.day, now.hour, now.minute, i)
         with open(path, mode='wb') as f:
             cPickle.dump(c, f)
     # path = './data/{:04}{:02}{:02}{:02}{:02}{:02}.history'.format(
