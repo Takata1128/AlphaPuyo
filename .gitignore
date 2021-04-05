@@ -6,3 +6,4 @@ CMakeLists.txt
 /logs
 /python/img
 evaluate.log
+*.h5
