@@ -1,5 +1,6 @@
 import pickle
 from pathlib import Path
+import json
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,7 +11,7 @@ from keras.optimizers import SGD
 from keras.utils import Sequence
 
 from define import (BATCH_SIZE, CHANNEL, DN_OUTPUT_SIZE, HEIGHT, RN_EPOCHS,
-                    WIDTH, DN_INPUT_SHAPE, GAMEMAP_HEIGHT, GAMEMAP_WIDTH, PUYO_COLOR, DATA_PATH, RESOURCE_PATH)
+                    WIDTH, DN_INPUT_SHAPE, GAMEMAP_HEIGHT, GAMEMAP_WIDTH, PUYO_COLOR, DATA_PATH, RESOURCE_PATH, LOG_PATH)
 
 
 def encode(stage, puyos):
@@ -57,7 +58,6 @@ class TrainDataGenerator(Sequence):
         item_path = self.data_paths[idx]
         with item_path.open(mode='rb') as f:
             history = pickle.load(f)
-
             train_data = np.zeros((BATCH_SIZE, HEIGHT, WIDTH, CHANNEL))
             p = np.zeros((BATCH_SIZE, DN_OUTPUT_SIZE))
             v = np.zeros(BATCH_SIZE)
@@ -117,14 +117,13 @@ def train_network():
 
     # モデルのコンパイル
     model.compile(loss=['categorical_crossentropy', 'mse'],
-                  loss_weights={'pi': 0.8, 'v': 0.2},
                   optimizer=SGD(momentum=0.9))
 
     def step_decay(epoch):
         x = 0.002
-        if epoch >= 10:
+        if epoch >= 20:
             x = 0.001
-        if epoch >= 15:
+        if epoch >= 40:
             x = 0.0005
         return x
 
@@ -149,6 +148,10 @@ def train_network():
 
     K.clear_session()
     del model
+
+    with open(LOG_PATH+'/loss.csv', 'a') as f:
+        f.write('v_loss,'+','.join(map(str, plot_callback.v_loss))+'\n')
+        f.write('pi_loss,'+','.join(map(str, plot_callback.pi_loss))+'\n')
 
 
 if __name__ == '__main__':

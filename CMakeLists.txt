@@ -34,5 +34,5 @@ target_include_directories(AlphaPuyo PUBLIC ${BOOST_ROOT}/include/boost-1_74)
 
 # Copy resource
 file(COPY ${CMAKE_SOURCE_DIR}/resources/ DESTINATION ${PROJECT_BINARY_DIR}/resources/)
-file(COPY ${CMAKE_SOURCE_DIR}/save.py DESTINATION ${PROJECT_BINARY_DIR}/Release/)
+file(COPY ${CMAKE_SOURCE_DIR}/python/save.py DESTINATION ${PROJECT_BINARY_DIR}/Release/)
 add_definitions(-DRESOURCE_DIR="${PROJECT_BINARY_DIR}/resources/")

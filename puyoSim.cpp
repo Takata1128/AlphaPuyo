@@ -11,6 +11,7 @@
 #include <fstream>
 #include <future>
 #include <iostream>
+#include <numeric>
 #include <stdio.h>
 #include <tensorflow/c/c_api.h>
 #include <vector>
@@ -21,7 +22,25 @@ using HIST =
 
 int main(int argc, char *argv[]) {
     if(argc <= 1) {
-        selfplay::play(0);
+        auto [hist, rewds, pots] = selfplay::evalPlay(0);
+        std::ofstream output(
+            "C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/evaluate.csv",
+            std::ios::app);
+        output << "rews,";
+        for(int i = 0; i < rewds.size(); i++) {
+            output << rewds[i] << ",";
+        }
+        output << std::accumulate(rewds.begin(), rewds.end(), 0) /
+                      (float)(EN_GAME_COUNT)
+               << "\n";
+        output << "pots,";
+        for(int i = 0; i < pots.size(); i++) {
+            output << pots[i] << ",";
+        }
+        output << std::accumulate(pots.begin(), pots.end(), 0) /
+                      (float)(EN_GAME_COUNT)
+               << "\n";
+        output.close();
     }
     if(strcmp(argv[1], "self") == 0) {
         try {
@@ -29,7 +48,7 @@ int main(int argc, char *argv[]) {
             std::vector<std::future<std::vector<HIST>>> futures;
             for(int i = 0; i < THREAD_NUM; i++) {
                 futures.push_back(
-                    std::async(std::launch::async, selfplay::play, i));
+                    std::async(std::launch::async, selfplay::play, i, false));
             }
             for(auto &f : futures) {
                 auto hist = f.get();
@@ -40,6 +59,8 @@ int main(int argc, char *argv[]) {
             util::saveData(histories);
         } catch(std::string str) {
             std::cout << str << std::endl;
+        } catch(std::exception &e) {
+            std::cout << e.what() << std::endl;
         }
     } else if(strcmp(argv[1], "eval") == 0) {
         try {
@@ -66,22 +87,30 @@ int main(int argc, char *argv[]) {
                     potentialsAll.emplace_back(p);
                 }
             }
-
             std::ofstream output(
-                "C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/evaluate.log",
+                "C:/Users/rokahikou/Ohsuga_lab/AlphaPuyo/evaluate.csv",
                 std::ios::app);
+            output << "rews,";
             for(int i = 0; i < rewardsAll.size(); i++) {
-                output << rewardsAll[i]
-                       << (i == rewardsAll.size() - 1 ? "/n" : ",");
+                output << rewardsAll[i] << ",";
             }
+            output << std::accumulate(rewardsAll.begin(), rewardsAll.end(), 0) /
+                          (float)(EN_GAME_COUNT)
+                   << "\n";
+            output << "pots,";
             for(int i = 0; i < potentialsAll.size(); i++) {
-                output << potentialsAll[i]
-                       << (i == potentialsAll.size() - 1 ? "/n" : ",");
+                output << potentialsAll[i] << ",";
             }
+            output << std::accumulate(potentialsAll.begin(),
+                                      potentialsAll.end(), 0) /
+                          (float)(EN_GAME_COUNT)
+                   << "\n";
             output.close();
             util::saveData(histories);
         } catch(std::string str) {
             std::cout << str << std::endl;
+        } catch(std::exception &e) {
+            std::cout << e.what() << std::endl;
         }
     } else {
         std::cout << "Invalid argument!" << std::endl;

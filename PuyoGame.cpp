@@ -33,7 +33,7 @@ bool puyogame::State::isLose() {
     return this->gameMap[DEAD_Y][DEAD_X] != puyogame::Puyo::NONE;
 }
 
-bool puyogame::State::isEnd() { return this->turn == MAX_STEP; }
+bool puyogame::State::isEnd() { return this->turn >= MAX_STEP; }
 
 puyogame::Puyo puyogame::State::getNextPuyo() {
     return Puyo(puyos[0][0], puyos[0][1]);
@@ -52,7 +52,7 @@ VVI puyogame::State::oneFall(VVI stage, size_t x, int color, bool &isAlive) {
 
     size_t fallY = getFallY(stage, x);
     stage[fallY][x] = color;
-    isAlive = (stage[1][2] == puyogame::Puyo::NONE);
+    isAlive = (stage[DEAD_Y][DEAD_X] == puyogame::Puyo::NONE);
     return stage;
 }
 
@@ -223,40 +223,6 @@ inline VVI makePuyos(const VI &puyo1, const VI &puyo2) {
     return ret;
 }
 
-// // 次状態に遷移
-// puyogame::State puyogame::State::next(int action, VI nextPuyoColors,
-//                                       int &reward) {
-//     VVI gameMap = this->gameMap;
-//     Puyo puyo = getNextPuyo();
-//     int x;
-//     if(action < 3) {
-//         x = 0;
-//         if(action == 0)
-//             puyo.direction = puyo.RIGHT;
-//         if(action == 1)
-//             puyo.direction = puyo.DOWN;
-//         if(action == 2)
-//             puyo.direction = puyo.UP;
-//     } else if(action > 18) {
-//         x = 5;
-//         if(action == 19)
-//             puyo.direction = puyo.LEFT;
-//         if(action == 20)
-//             puyo.direction = puyo.DOWN;
-//         if(action == 21)
-//             puyo.direction = puyo.UP;
-//     } else {
-//         puyo.direction = ((action + 1) - 4) % 4 + 1;
-//         x = ((action - 3) / 4) + 1;
-//     }
-
-//     bool isAlive = 1;
-//     VVI newGameMap = this->puyoFall(gameMap, x, puyo, isAlive);
-//     VVI resMap = this->eraseSimulation(gameMap, newGameMap, reward);
-//     VVI nextPuyos = makePuyos(puyos[1], nextPuyoColors);
-//     return State(resMap, nextPuyos, this->turn + 1);
-// }
-
 // 次状態に遷移
 puyogame::State puyogame::State::next(int action, VI nextPuyoColors,
                                       int &reward) {
@@ -271,24 +237,58 @@ puyogame::State puyogame::State::next(int action, VI nextPuyoColors,
             puyo.direction = puyo.DOWN;
         if(action == 2)
             puyo.direction = puyo.UP;
-    } else if(action > 10) {
-        x = 3;
-        if(action == 11)
+    } else if(action > 18) {
+        x = 5;
+        if(action == 19)
             puyo.direction = puyo.LEFT;
-        if(action == 12)
+        if(action == 20)
             puyo.direction = puyo.DOWN;
-        if(action == 13)
+        if(action == 21)
             puyo.direction = puyo.UP;
     } else {
         puyo.direction = ((action + 1) - 4) % 4 + 1;
         x = ((action - 3) / 4) + 1;
     }
+
     bool isAlive = 1;
     VVI newGameMap = this->puyoFall(gameMap, x, puyo, isAlive);
     VVI resMap = this->eraseSimulation(gameMap, newGameMap, reward);
     VVI nextPuyos = makePuyos(puyos[1], nextPuyoColors);
     return State(resMap, nextPuyos, this->turn + 1);
 }
+
+// // 次状態に遷移
+// puyogame::State puyogame::State::next(int action, VI nextPuyoColors,
+//                                       int &reward) {
+//     VVI gameMap = this->gameMap;
+//     Puyo puyo = getNextPuyo();
+//     int x;
+//     if(action < 3) {
+//         x = 0;
+//         if(action == 0)
+//             puyo.direction = puyo.RIGHT;
+//         if(action == 1)
+//             puyo.direction = puyo.DOWN;
+//         if(action == 2)
+//             puyo.direction = puyo.UP;
+//     } else if(action > 10) {
+//         x = 3;
+//         if(action == 11)
+//             puyo.direction = puyo.LEFT;
+//         if(action == 12)
+//             puyo.direction = puyo.DOWN;
+//         if(action == 13)
+//             puyo.direction = puyo.UP;
+//     } else {
+//         puyo.direction = ((action + 1) - 4) % 4 + 1;
+//         x = ((action - 3) / 4) + 1;
+//     }
+//     bool isAlive = 1;
+//     VVI newGameMap = this->puyoFall(gameMap, x, puyo, isAlive);
+//     VVI resMap = this->eraseSimulation(gameMap, newGameMap, reward);
+//     VVI nextPuyos = makePuyos(puyos[1], nextPuyoColors);
+//     return State(resMap, nextPuyos, this->turn + 1);
+// }
 
 int puyogame::State::calcMaxReward() {
     auto gameMap = this->gameMap;

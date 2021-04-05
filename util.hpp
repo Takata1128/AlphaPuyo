@@ -47,7 +47,7 @@ int greedy(puyogame::State state, const VVI &puyoSeqs) {
     }
 }
 
-void show(puyogame::State state, const std::vector<double> &policies) {
+void show(puyogame::State state, const std::vector<float> &policies) {
     std::cout << "=== turn :" << state.turn << " begin ===" << std::endl;
     std::cout << state.puyos[0][0] << " " << state.puyos[0][1] << std::endl;
     std::cout << state.puyos[1][0] << " " << state.puyos[1][1] << std::endl;

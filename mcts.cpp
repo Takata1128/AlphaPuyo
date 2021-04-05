@@ -53,9 +53,13 @@ int mcts::MCTS::Node::nextChildNode() {
     float t = (float)std::accumulate(v.begin(), v.end(), 0);
     std::vector<float> pucbValues;
     for(auto &c : childNodes) {
-        pucbValues.push_back((c.n != 0 ? (c.w / (float)c.n) : 0.0) +
-                             C_PUCT * c.p *
-                                 (sqrtf((float)t) / (float)(1.0 + c.n)));
+        if(c.d == 1 && c.n == 0) {
+            pucbValues.push_back(100.0);
+        } else {
+            pucbValues.push_back((c.n != 0 ? (c.w / (float)c.n) : 0.0) +
+                                 C_PUCT * c.p *
+                                     (sqrtf((float)t) / (float)(1.0 + c.n)));
+        }
     }
     int idx =
         std::distance(pucbValues.begin(),
@@ -85,11 +89,15 @@ std::vector<double> mcts::MCTS::randomMcts(puyogame::State state,
         VVI puyoSeqs = puyogame::State::makePuyoSeqs(TSUMO_SIZE);
         puyogame::State tmp = state;
         auto rootNode = Node(tmp, 0, 0, 0);
-        for(int j = 0; j < PV_EVALUATE_COUNT; j++) {
+
+        {
             rootNode.evaluate(puyoSeqs, *this);
-        }
-        for(int j = 0; j < childNodeNum; j++) {
-            scores[j] += rootNode.childNodes[j].n;
+            for(int j = 0; j < PV_EVALUATE_COUNT; j++) {
+                rootNode.evaluate(puyoSeqs, *this);
+            }
+            for(int j = 0; j < childNodeNum; j++) {
+                scores[j] += rootNode.childNodes[j].n;
+            }
         }
     }
     if(temperature < 0.001) { // temperature == 0
@@ -108,12 +116,7 @@ std::vector<double> mcts::MCTS::normalMcts(puyogame::State state,
                                            float temperature) {
     int childNodeNum = state.legalActions().size();
     puyogame::State tmp = state;
-    VVI evalPuyoSeqs(TSUMO_SIZE, VI(2));
-    for(int i = 0; i < TSUMO_SIZE; i++) {
-        for(int j = 0; j < 2; j++) {
-            evalPuyoSeqs[i][j] = puyoSeqs[state.turn + i][j];
-        }
-    }
+    VVI evalPuyoSeqs = puyoSeqs;
     auto rootNode = Node(tmp, 0, 0, 0);
     for(int j = 0; j < PV_EVALUATE_COUNT; j++) {
         rootNode.evaluate(evalPuyoSeqs, *this);

@@ -30,6 +30,7 @@ class MCTS {
         float evaluate(const VVI &puyoSeqs, MCTS &parent);
 
         /// @brief get best child node index
+        /// @param isRoot rootnode or not
         /// @return best child node index
         int nextChildNode();
         Node(puyogame::State state, int d, float p, int r);
